@@ -198,6 +198,8 @@ Recipe lines are scanned for recursive make invocations. Extraction is best-effo
 - Loops: `for t in $(TARGETS); do $(MAKE) $$t; done`
 - Multiple make invocations on one line (only the first is detected)
 
+TODO: Each of these limitations should be turned into an action item in TODO.md at the root of the new repo; these will become the first issues in the new GitHub project.
+
 If a target cannot be reliably determined, the line is skipped without error.
 
 ### Description Extraction and Inline Comments
