@@ -48,17 +48,19 @@ func parseReader(r io.Reader, filePath string, visited map[string]bool) (*Makefi
 	}
 
 	mf := &Makefile{}
-	var currentRule *Rule
+	var currentRuleIndices []int
 
 	for _, line := range lines {
 		if line == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
-			currentRule = nil
+			currentRuleIndices = nil
 			continue
 		}
 
-		if strings.HasPrefix(line, "\t") && currentRule != nil {
+		if strings.HasPrefix(line, "\t") && len(currentRuleIndices) > 0 {
 			recipe := strings.TrimPrefix(line, "\t")
-			currentRule.Recipes = append(currentRule.Recipes, recipe)
+			for _, idx := range currentRuleIndices {
+				mf.Rules[idx].Recipes = append(mf.Rules[idx].Recipes, recipe)
+			}
 
 			continue
 		}
@@ -69,22 +71,23 @@ func parseReader(r io.Reader, filePath string, visited map[string]bool) (*Makefi
 		}
 
 		if handled {
-			currentRule = nil
+			currentRuleIndices = nil
 			continue
 		}
 
 		rules := parseRuleLine(line)
 		if len(rules) > 0 {
+			currentRuleIndices = nil
+
 			for i := range rules {
 				mf.Rules = append(mf.Rules, rules[i])
+				currentRuleIndices = append(currentRuleIndices, len(mf.Rules)-1)
 			}
-
-			currentRule = &mf.Rules[len(mf.Rules)-1]
 
 			continue
 		}
 
-		currentRule = nil
+		currentRuleIndices = nil
 	}
 
 	mf.Rules = mergeRules(mf.Rules)
