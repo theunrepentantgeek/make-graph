@@ -141,8 +141,13 @@ func parseRuleLine(line string) []Rule {
 		return nil
 	}
 
-	// Handle double-colon rules
+	// Check for := assignment (colon immediately followed by =)
 	after := line[colonIdx+1:]
+	if strings.HasPrefix(after, "=") {
+		return nil
+	}
+
+	// Handle double-colon rules
 	if strings.HasPrefix(after, ":") {
 		after = after[1:]
 	}

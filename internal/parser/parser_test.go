@@ -158,6 +158,49 @@ func TestParse_DoubleColon_MergesRules(t *testing.T) {
 	g.Expect(rules["build"].Recipes).To(HaveLen(2))
 }
 
+func TestParse_VariableAssignments_SkippedCorrectly(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/skip-variables.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(mf.Rules).To(HaveLen(2))
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("build"))
+	g.Expect(rules).To(HaveKey("clean"))
+}
+
+func TestParse_EmptyFile_ReturnsEmptyMakefile(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/empty.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(mf.Rules).To(BeEmpty())
+}
+
+func TestParse_VariablePrerequisites_TreatedAsLiteral(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/variable-prereqs.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(mf.Rules).To(HaveLen(1))
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules["build"].Prerequisites).To(ConsistOf("$(OBJS)"))
+}
+
 // makeRuleMap creates a map from target name to Rule for convenient test lookups.
 func makeRuleMap(rules []Rule) map[string]Rule {
 	m := make(map[string]Rule, len(rules))
