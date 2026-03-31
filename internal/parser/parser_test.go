@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -199,6 +201,59 @@ func TestParse_VariablePrerequisites_TreatedAsLiteral(t *testing.T) {
 
 	rules := makeRuleMap(mf.Rules)
 	g.Expect(rules["build"].Prerequisites).To(ConsistOf("$(OBJS)"))
+}
+
+func TestParse_Include_ParsesIncludedFile(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/includes/main.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("all"))
+	g.Expect(rules).To(HaveKey("lib"))
+	g.Expect(rules).To(HaveKey("lib-util"))
+}
+
+func TestParse_IncludeCycle_DoesNotLoop(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/includes/cycle-a.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("a-target"))
+	g.Expect(rules).To(HaveKey("b-target"))
+}
+
+func TestParse_SilentIncludeMissing_ContinuesWithoutError(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Arrange
+	dir := t.TempDir()
+	mkFile := filepath.Join(dir, "Makefile")
+	content := "-include nonexistent.mk\n\nbuild:\n\techo build\n"
+	err := os.WriteFile(mkFile, []byte(content), 0o644)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Act
+	mf, parseErr := Parse(mkFile)
+
+	// Assert
+	g.Expect(parseErr).ToNot(HaveOccurred())
+	g.Expect(mf.Rules).To(HaveLen(1))
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("build"))
 }
 
 // makeRuleMap creates a map from target name to Rule for convenient test lookups.
