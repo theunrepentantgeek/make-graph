@@ -140,35 +140,67 @@ type Rule struct {
 
 Single-pass, line-by-line:
 
-1. **Join continuation lines** — lines ending with `\` are concatenated with the next line before processing.
+1. **Join continuation lines** — lines ending with `\` are concatenated with the next line before processing. If a continuation `\` appears at EOF (no next line), the `\` is trimmed and the line is processed as-is.
 2. **Skip blank lines and full-line comments** — lines that are empty or start with `#`.
 3. **Handle `include` directives** — `include path/to/file` and `-include path/to/file` (silent variant). Resolve paths relative to the directory of the current Makefile. Recursively parse included files.
-4. **Detect rule lines** — match `target: prerequisites` pattern. A line containing `:` where the left side has no `=` (to avoid variable assignments like `VAR := value`). Also extract `## description` from the end of the line.
-5. **Collect recipe lines** — lines starting with a tab character after a rule line belong to that rule's recipe. Store raw text for `$(MAKE)` scanning.
+4. **Detect rule lines** — a line is a rule if it matches the pattern `targets : prerequisites` or `targets :: prerequisites` where:
+   - The line contains `:` or `::`
+   - The `:` or `::` is not inside `$(...)` or `${...}` expansion
+   - The text before the `:` contains no `=`, `?=`, or `+=` (to exclude variable assignments even without spaces, e.g., `VAR:=value`)
+   - The text before the `:` is one or more whitespace-separated target names (alphanumeric, `-`, `_`, `.`, `/`)
+   - After stripping prerequisites, extract `## description` if present
+5. **Collect recipe lines** — lines starting with a **tab character** (0x09, not spaces) after a rule line belong to that rule's recipe. Make is strict about requiring tabs; space-indented lines are not recipe lines. Store raw text for `$(MAKE)` scanning.
 6. **Skip everything else** — variable assignments (`VAR = ...`, `VAR := ...`, `VAR ?= ...`, `VAR += ...`), conditionals (`ifeq`, `ifdef`, `ifndef`, `else`, `endif`), directives (`.EXPORT_ALL_VARIABLES`, `define`, `endef`), and any other unrecognized lines.
 
 ### Dot-Prefix Filtering
 
-Any target starting with `.` is excluded at parse time. This covers all special targets (`.PHONY`, `.SUFFIXES`, `.DEFAULT`, `.PRECIOUS`, `.INTERMEDIATE`, `.SECONDARY`, `.DELETE_ON_ERROR`, `.SILENT`, `.IGNORE`, `.NOTPARALLEL`, etc.) as well as any user-defined hidden targets.
+Targets starting with `.` are excluded at parse time. This covers:
+- Special targets (`.PHONY`, `.SUFFIXES`, `.DEFAULT`, `.PRECIOUS`, etc.) and their declarations
+- User-defined hidden targets (e.g., `.internal_helper`)
+
+The line `.PHONY: target1 target2` is skipped entirely — it is not parsed as a rule with `.PHONY` as a target. The prerequisites of `.PHONY` are not extracted.
+
+### Multiple Targets Per Line
+
+If a rule line has multiple targets before the `:` or `::`, targets are split by whitespace. Example: `all clean dist: deps` creates three separate rules for `all`, `clean`, and `dist`, each with the same prerequisites. Recipes following the rule line are shared by all targets.
+
+### Double-Colon Rules (::)
+
+Double-colon rules (`target:: prerequisites`) are treated identically to single-colon rules for graph purposes. If a target appears in multiple rules (whether `:` or `::`), all prerequisites and recipes across all rule instances are merged into a single node. The graph shows the union of all prerequisites.
 
 ### Include Handling
 
 - Both `include` and `-include` (also `sinclude`) are recognized.
-- Paths resolved relative to the directory of the file containing the directive.
-- **Cycle detection**: maintain a set of absolute file paths in the current parse chain. If a file is encountered that's already being parsed, skip it and continue.
-- Missing files referenced by `include` produce an error; missing files referenced by `-include` are silently skipped.
+- Path resolution:
+  - Absolute paths (starting with `/`) are used as-is.
+  - Relative paths are resolved relative to the directory containing the current Makefile.
+  - The tool's working directory is not used for path resolution.
+  - Tilde (`~`) expansion is not performed.
+- **Cycle detection**: maintain a set of absolute file paths in the current parse chain. If a file is encountered that's already being parsed, skip it and log a warning (if verbose). Continue parsing remaining includes.
+- Missing files referenced by `include` produce an error and stop parsing.
+- Missing files referenced by `-include` are silently skipped.
+- Unreadable files (permission denied, is a directory, etc.) produce an error regardless of `include` vs `-include`.
 
 ### $(MAKE) Detection
 
-Recipe lines are scanned with regex for recursive make invocations:
+Recipe lines are scanned for recursive make invocations. Extraction is best-effort.
 
+**Patterns detected:**
 - `$(MAKE) target` / `${MAKE} target`
 - `$(MAKE) -C dir target` / `${MAKE} -C dir target`
-- Also detect bare `make target` and `make -C dir target`
+- `make target` / `make -C dir target`
+- Common flags between the make command and target are accepted and skipped: `-s`, `-j`, `-k`, `-i`, `-n`, and their long forms
+- Leading `@`, `-`, or `+` prefixes on recipe lines are stripped before matching
 
-Extraction is best-effort. If the target cannot be determined (e.g., the target is a variable, the command is too complex), the line is silently skipped. No variable expansion is attempted.
+**Known limitations (silently skipped):**
+- Target is a variable: `$(MAKE) $(GOALS)` — no variable expansion attempted
+- Complex commands with pipes or redirects: `$(MAKE) target | grep error`
+- Loops: `for t in $(TARGETS); do $(MAKE) $$t; done`
+- Multiple make invocations on one line (only the first is detected)
 
-### Description Extraction
+If a target cannot be reliably determined, the line is skipped without error.
+
+### Description Extraction and Inline Comments
 
 The `## description` convention (commonly used for `make help` targets):
 
@@ -177,7 +209,27 @@ build: deps ## Build the binary
 test-unit: ## Run unit tests
 ```
 
-A `##` followed by text on a rule line is captured as the rule's `Description`. Single `#` comments are not captured (they're often internal notes, not user-facing descriptions).
+A `##` followed by text on a rule line is captured as the rule's `Description`. Single `#` (not followed by another `#`) is treated as a comment delimiter that terminates the prerequisites list — text after it is discarded, not parsed as prerequisites or description.
+
+Examples:
+- `build: obj1 obj2 # internal note` → prerequisites: `obj1`, `obj2`; no description
+- `build: obj1 obj2 ## Build all` → prerequisites: `obj1`, `obj2`; description: `Build all`
+
+### Variable References in Prerequisites
+
+Prerequisites that are variable expansions (e.g., `$(DEPS)`, `${SRCS}`) are included as literal text. A node is created with ID equal to the literal text `$(DEPS)`. This may result in unrealistic nodes in the graph, but preserves all prerequisite relationships visible in the Makefile. No variable expansion is attempted.
+
+### Error Handling
+
+| Scenario | Behavior |
+|---|---|
+| Missing `include` file | Return error and stop parsing |
+| Missing `-include` file | Log warning (if verbose), continue silently |
+| Unreadable file (permission denied, etc.) | Return error |
+| Circular include detected | Skip the file, log warning (if verbose), continue |
+| Malformed rule line | Skip the line, continue to next line |
+| Continuation `\` at EOF | Trim `\`, process line as-is |
+| Empty Makefile | Return empty `Makefile` struct (no error) |
 
 ## Graph Builder (makegraph)
 
@@ -206,7 +258,7 @@ func (b *Builder) Build() *graph.Graph
 
 ### Determinism
 
-Rules and prerequisites processed in alphabetical order for deterministic output across runs.
+For deterministic output, rules (targets) are processed in alphabetical order when creating nodes and iterating edges. Within a single rule, prerequisites and edges are created in the order they appear in the Makefile — this preserves the rule's original structure while ensuring overall determinism across runs.
 
 ## CLI
 
@@ -278,12 +330,11 @@ Same YAML/JSON loading, same CLI-overrides-file-overrides-defaults priority, sam
 
 ## Namespace Handling
 
-Copied from task-graph with one adjustment: **colon `:` is removed as a namespace delimiter**. Makefiles use colons in rule syntax, not as namespace separators.
+Copied from task-graph with adjustments: **colon `:` and slash `/` are NOT used as namespace delimiters**. Makefiles use colons in rule syntax and slashes in file paths (e.g., `build/output.o`), so these characters would create spurious namespaces.
 
 Supported delimiters for informal namespaces:
 - Hyphen `-`: `build-docker` → namespace `build`
 - Dot `.`: `build.docker` → namespace `build`
-- Slash `/`: `build/docker` → namespace `build`
 
 ## Output Formats
 
@@ -310,16 +361,21 @@ Copied from task-graph. Flowchart output with configurable direction (TD, LR, BT
 |---|---|
 | Basic rules | Single target, multiple prerequisites, no prerequisites |
 | Multiple targets | Multiple targets on one line (`all clean: deps`) |
+| Double-colon rules | `target:: deps` treated same as `target: deps`; merging across rules |
+| Targets with paths | Targets containing `/` (e.g., `build/output.o: src/input.c`) |
 | Descriptions | `## comment` extraction, no `##`, edge cases |
-| Continuation lines | `\` line joining across 2+ lines |
-| Includes | `include`, `-include`, relative paths, cycle detection, missing files |
-| Recipe lines | Tab-indented capture, non-tab ends recipe |
-| Dot-prefix filtering | `.PHONY`, `.SUFFIXES`, etc. excluded |
-| $(MAKE) detection | `$(MAKE) target`, `${MAKE} -C dir target`, bare `make target`, unrecognized patterns |
+| Inline comments | Single `#` vs `##` distinction; text after `#` not parsed as prereqs |
+| Continuation lines | `\` line joining across 2+ lines; `\` at EOF |
+| Includes | `include`, `-include`, relative paths, absolute paths, cycle detection, missing files |
+| Recipe lines | Tab-indented capture, space-indented lines are NOT recipes |
+| Dot-prefix filtering | `.PHONY`, `.SUFFIXES`, etc. excluded; `.PHONY: t1 t2` skipped entirely |
+| $(MAKE) detection | `$(MAKE) target`, `${MAKE} -C dir target`, bare `make target`, `@$(MAKE)`, unrecognized patterns |
+| Variable prerequisites | `target: $(DEPS)` — literal node created for `$(DEPS)` |
 | Comments | Full-line `#` skipped, inline `#` vs `##` distinction |
 | Edge cases | Empty file, only comments, target with no recipe, blank lines between rules |
 | Variable assignments | `VAR = ...`, `VAR := ...`, `VAR ?= ...` all skipped |
 | Conditionals | `ifeq`, `ifdef`, `else`, `endif` all skipped |
+| Empty rules | `clean:` with no prerequisites |
 
 ### Graph Builder Tests
 
