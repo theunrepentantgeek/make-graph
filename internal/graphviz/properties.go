@@ -93,8 +93,19 @@ func (p properties) WriteTo(
 
 	for _, key := range keys {
 		value := p[key]
-		nested.Addf("%s=\"%s\"", key, value)
+		nested.Addf("%s=\"%s\"", quoteString(key), quoteString(value))
 	}
 
 	root.Add("]")
+}
+
+// quoteString returns the given string with all double quotes escaped,
+// so that it can be safely used as a label in Graphviz.
+func quoteString(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	s = strings.ReplaceAll(s, `{`, `\{`)
+	s = strings.ReplaceAll(s, `}`, `\}`)
+
+	return s
 }

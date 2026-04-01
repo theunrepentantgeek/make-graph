@@ -56,12 +56,10 @@ func parseReader(
 
 	for _, line := range lines {
 		if line == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
-			currentRuleIndices = nil
-
 			continue
 		}
 
-		if strings.HasPrefix(line, "\t") && len(currentRuleIndices) > 0 {
+		if strings.HasPrefix(line, "\t") {
 			recipe := strings.TrimPrefix(line, "\t")
 			for _, idx := range currentRuleIndices {
 				mf.Rules[idx].Recipes = append(mf.Rules[idx].Recipes, recipe)

@@ -258,6 +258,48 @@ func TestParse_SilentIncludeMissing_ContinuesWithoutError(t *testing.T) {
 	g.Expect(rules).To(HaveKey("build"))
 }
 
+func TestParse_BlankLineInRecipe_DoesNotCreatePhantomRules(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/blank-in-recipe.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(mf.Rules).To(HaveLen(2))
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("build"))
+	g.Expect(rules).To(HaveKey("setup"))
+
+	// The docker command arguments must not leak as prerequisites
+	g.Expect(rules["build"].Prerequisites).To(ConsistOf("setup"))
+}
+
+func TestParse_AddonResizer_DoesNotParseRecipesAsRules(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/addon-resizer-makefile")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+
+	rules := makeRuleMap(mf.Rules)
+
+	// container's only dependency should be .container-$(ARCH)
+	g.Expect(rules["container"].Prerequisites).To(ConsistOf(".container-$(ARCH)"))
+
+	// -installsuffix is a go build flag inside a recipe, not a target
+	g.Expect(rules).NotTo(HaveKey("-installsuffix"))
+
+	// docker, run, etc. from recipe lines must not become targets
+	g.Expect(rules).NotTo(HaveKey("docker"))
+	g.Expect(rules).NotTo(HaveKey("run"))
+}
+
 // makeRuleMap creates a map from target name to Rule for convenient test lookups.
 func makeRuleMap(rules []Rule) map[string]Rule {
 	m := make(map[string]Rule, len(rules))
