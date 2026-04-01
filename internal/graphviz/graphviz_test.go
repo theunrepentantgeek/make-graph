@@ -243,9 +243,9 @@ func buildNamespacedGraph(t *testing.T) *graph.Graph {
 	gr := graph.New()
 
 	build := gr.AddNode("build")
-	cmdBuild := gr.AddNode("cmd:build")
-	cmdTestUnit := gr.AddNode("cmd:test:unit")
-	cmdTestGolden := gr.AddNode("cmd:test:golden")
+	cmdBuild := gr.AddNode("cmd-build")
+	cmdTestUnit := gr.AddNode("cmd-test-unit")
+	cmdTestGolden := gr.AddNode("cmd-test-golden")
 
 	cmdBuild.AddEdge(build)
 
