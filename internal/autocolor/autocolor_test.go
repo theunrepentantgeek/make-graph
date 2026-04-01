@@ -155,10 +155,10 @@ func TestGenerateRules_MixedTopLevelAndNested_ShallowerFirst(t *testing.T) {
 
 	// Arrange
 	gr := graph.New()
-	gr.AddNode("build")            // no namespace
-	gr.AddNode("cmd-build")        // namespace: cmd
-	gr.AddNode("cmd-test-unit")    // namespaces: cmd, cmd-test
-	gr.AddNode("cmd-test-golden")  // namespaces: cmd, cmd-test
+	gr.AddNode("build")           // no namespace
+	gr.AddNode("cmd-build")       // namespace: cmd
+	gr.AddNode("cmd-test-unit")   // namespaces: cmd, cmd-test
+	gr.AddNode("cmd-test-golden") // namespaces: cmd, cmd-test
 
 	// Act
 	rules := GenerateRules(gr)
