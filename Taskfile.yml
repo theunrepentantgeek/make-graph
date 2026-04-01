@@ -1,0 +1,81 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  # Output folder for all build artifacts
+  BUILD_DIR: '{{ list .ROOT_DIR "build" | join "/" | osClean }}'
+
+run: once
+
+output: prefixed
+
+tasks:
+  default:
+    desc: Run all tasks
+    deps:
+      - build
+      - test
+
+  build:
+    desc: Build the make-graph binary
+    deps:
+      - build:dir
+    cmds:
+      - go build -o "{{.BUILD_DIR}}/make-graph"
+
+  build:dir:
+    desc: Ensure our output folder exists and is empty
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - mkdir -p {{.BUILD_DIR}}
+
+  test:
+    desc: Run tests and checks
+    deps:
+      - unit-test
+      - lint
+
+  unit-test:
+    desc: Run unit tests
+    deps:
+      - build
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run golangci-lint to check for linting issues
+    cmds:
+      - golangci-lint-custom run --verbose
+
+  ci:
+    desc: Run continuous integration tasks
+    deps:
+      - test
+
+  tidy:
+    desc: "Tidy up source"
+    cmds:
+      - task: tidy:gofumpt
+      - task: tidy:mod
+      - task: tidy:lint
+
+  tidy:gofumpt:
+    desc: "Run gofumpt to reformat source code"
+    cmds:
+      - gofumpt -l -w .
+
+  tidy:mod:
+    desc: "Run go mod tidy"
+    cmds:
+      - go mod tidy
+
+  tidy:lint:
+    desc: "Run golangci-lint in fix mode"
+    cmds:
+      - golangci-lint-custom run --fix --verbose
+
+  update-golden-files:
+    desc: "Update golden files with current output"
+    cmds:
+      - GOLDIE_UPDATE=true go test ./...
