@@ -1,0 +1,90 @@
+digraph {
+  "all" [
+    color="black"
+    label="{all | Build and test \neverything}"
+    shape="Mrecord"
+  ]
+  "all" -> "build" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  "all" -> "test" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  
+  "build" [
+    color="black"
+    label="{build | Build the binary}"
+    shape="Mrecord"
+  ]
+  "build" -> "deps" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  
+  "clean" [
+    color="black"
+    label="{clean | Clean build artifacts}"
+    shape="Mrecord"
+  ]
+  
+  "deploy" [
+    color="black"
+    label="{deploy | Deploy to production}"
+    shape="Mrecord"
+  ]
+  "deploy" -> "build" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  "deploy" -> "test" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  "deploy" -> "all" [
+    color="blue"
+    penwidth="1"
+    style="dashed"
+  ]
+  
+  "deps" [
+    color="black"
+    label="{deps | Install dependencies}"
+    shape="Mrecord"
+  ]
+  
+  "lint" [
+    color="black"
+    label="{lint | Run linter}"
+    shape="Mrecord"
+  ]
+  
+  "test" [
+    color="black"
+    label="{test | Run tests}"
+    shape="Mrecord"
+  ]
+  "test" -> "build" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  
+  "test-integration" [
+    color="black"
+    label="{test-integration | Run integration tests}"
+    shape="Mrecord"
+  ]
+  "test-integration" -> "test" [
+    color="black"
+    penwidth="1"
+    style="solid"
+  ]
+  
+}

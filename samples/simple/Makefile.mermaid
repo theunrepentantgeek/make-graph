@@ -1,0 +1,25 @@
+flowchart TD
+  all["all"]
+  all --> build
+  all --> test
+  
+  build["build"]
+  build --> deps
+  
+  clean["clean"]
+  
+  deploy["deploy"]
+  deploy --> build
+  deploy --> test
+  deploy -.-> all
+  
+  deps["deps"]
+  
+  lint["lint"]
+  
+  test["test"]
+  test --> build
+  
+  test-integration["test-integration"]
+  test-integration --> test
+  
