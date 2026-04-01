@@ -38,7 +38,7 @@ func (b *Builder) Build() *graph.Graph {
 	return g
 }
 
-func (b *Builder) addEdgesForPrerequisites(rule parser.Rule, g *graph.Graph) {
+func (*Builder) addEdgesForPrerequisites(rule parser.Rule, g *graph.Graph) {
 	fromNode, ok := g.Node(rule.Target)
 	if !ok {
 		return
@@ -55,7 +55,7 @@ func (b *Builder) addEdgesForPrerequisites(rule parser.Rule, g *graph.Graph) {
 	}
 }
 
-func (b *Builder) addEdgesForCalls(rule parser.Rule, g *graph.Graph) {
+func (*Builder) addEdgesForCalls(rule parser.Rule, g *graph.Graph) {
 	fromNode, ok := g.Node(rule.Target)
 	if !ok {
 		return

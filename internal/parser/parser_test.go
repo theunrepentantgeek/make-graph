@@ -242,6 +242,8 @@ func TestParse_SilentIncludeMissing_ContinuesWithoutError(t *testing.T) {
 	dir := t.TempDir()
 	mkFile := filepath.Join(dir, "Makefile")
 	content := "-include nonexistent.mk\n\nbuild:\n\techo build\n"
+
+	//nolint:gosec // Test data file creation
 	err := os.WriteFile(mkFile, []byte(content), 0o644)
 	g.Expect(err).ToNot(HaveOccurred())
 

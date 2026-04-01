@@ -18,6 +18,7 @@ func main() {
 	)
 
 	log := cli.CreateLogger()
+
 	cfg, err := cli.CreateConfig()
 	if err != nil {
 		log.Error(eris.ToString(err, true))

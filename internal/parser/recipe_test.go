@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+//nolint:funlen // Number of test cases
 func TestDetectMakeCall_VariousPatterns_ReturnsExpectedResults(t *testing.T) {
 	t.Parallel()
 

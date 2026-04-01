@@ -34,15 +34,20 @@ type CLI struct {
 
 	GraphType string `help:"Type of graph to generate (dot or mermaid). Defaults to dot." long:"graph-type"`
 
+	//nolint:revive // Prioritise clarity for console help
 	Highlight string `help:"Highlight specific targets in the graph. Accepts target names or glob patterns, separated by commas or semicolons." long:"highlight"`
 
+	//nolint:revive // Prioritise clarity for console help
 	RenderImage string `help:"Render the graph as an image using graphviz dot. Specify the file type (e.g. png, svg)." long:"render-image"`
 
+	//nolint:revive // Prioritise clarity for console help
 	ExportConfig string `help:"Export the effective configuration to a file (YAML or JSON based on file extension)." long:"export-config"`
 	Verbose      bool   `help:"Enable verbose logging."`
 }
 
 // Run executes the CLI command with the given flags.
+//
+//nolint:revive // Function is already long and splitting it doesn't improve readability.
 func (c *CLI) Run(
 	flags *Flags,
 ) error {

@@ -12,14 +12,12 @@ import (
 
 // Parse reads a Makefile and returns its parsed representation.
 func Parse(filename string) (*Makefile, error) {
-	return parseFile(filename, nil)
+	visited := make(map[string]bool)
+
+	return parseFile(filename, visited)
 }
 
 func parseFile(filename string, visited map[string]bool) (*Makefile, error) {
-	if visited == nil {
-		visited = make(map[string]bool)
-	}
-
 	absPath, err := filepath.Abs(filename)
 	if err != nil {
 		return nil, eris.Wrapf(err, "resolving path %s", filename)
@@ -41,18 +39,25 @@ func parseFile(filename string, visited map[string]bool) (*Makefile, error) {
 	return parseReader(f, absPath, visited)
 }
 
-func parseReader(r io.Reader, filePath string, visited map[string]bool) (*Makefile, error) {
+//nolint:revive,cyclop // Function is already long and splitting it doesn't improve readability.
+func parseReader(
+	r io.Reader,
+	filePath string,
+	visited map[string]bool,
+) (*Makefile, error) {
 	lines, err := readLines(r)
 	if err != nil {
 		return nil, eris.Wrap(err, "reading lines")
 	}
 
 	mf := &Makefile{}
+
 	var currentRuleIndices []int
 
 	for _, line := range lines {
 		if line == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
 			currentRuleIndices = nil
+
 			continue
 		}
 
@@ -72,6 +77,7 @@ func parseReader(r io.Reader, filePath string, visited map[string]bool) (*Makefi
 
 		if handled {
 			currentRuleIndices = nil
+
 			continue
 		}
 
@@ -97,15 +103,18 @@ func parseReader(r io.Reader, filePath string, visited map[string]bool) (*Makefi
 
 // readLines reads all lines from a reader, joining continuation lines (ending with `\`).
 func readLines(r io.Reader) ([]string, error) {
+	//nolint:prealloc // We don't know how many lines there will be
 	var lines []string
 
 	scanner := bufio.NewScanner(r)
+
 	var pending string
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		if strings.HasSuffix(text, "\\") {
-			pending += strings.TrimSuffix(text, "\\")
+		if before, ok := strings.CutSuffix(text, "\\"); ok {
+			pending += before
+
 			continue
 		}
 
@@ -130,6 +139,8 @@ func readLines(r io.Reader) ([]string, error) {
 
 // parseRuleLine attempts to parse a line as a rule definition.
 // Returns nil if the line is not a rule.
+//
+//nolint:revive // Function is already long and splitting it doesn't improve readability.
 func parseRuleLine(line string) []Rule {
 	colonIdx := findRuleColon(line)
 	if colonIdx < 0 {
@@ -148,9 +159,7 @@ func parseRuleLine(line string) []Rule {
 	}
 
 	// Handle double-colon rules
-	if strings.HasPrefix(after, ":") {
-		after = after[1:]
-	}
+	after = strings.TrimPrefix(after[1:], ":")
 
 	targets := strings.Fields(before)
 	if len(targets) == 0 {
@@ -172,6 +181,7 @@ func parseRuleLine(line string) []Rule {
 
 	prereqs, description := parseAfterColon(after)
 
+	//nolint:prealloc // We don't know how many rules there will be
 	var rules []Rule
 
 	for _, target := range validTargets {
@@ -206,6 +216,8 @@ func parseAfterColon(after string) ([]string, string) {
 // findRuleColon finds the index of the colon that separates targets from prerequisites.
 // Returns -1 if no rule colon is found.
 // Skips colons inside $(...) or ${...} expansions.
+//
+//nolint:revive,cyclop // Function is already long and splitting it doesn't improve readability.
 func findRuleColon(line string) int {
 	depth := 0
 
@@ -224,6 +236,8 @@ func findRuleColon(line string) int {
 			if depth == 0 {
 				return i
 			}
+		default:
+			// Nothing
 		}
 	}
 
@@ -232,7 +246,7 @@ func findRuleColon(line string) int {
 
 // containsAssignment checks if text before a colon contains an assignment operator.
 func containsAssignment(text string) bool {
-	for i := 0; i < len(text); i++ {
+	for i := range len(text) {
 		switch text[i] {
 		case '=':
 			return true
@@ -240,6 +254,8 @@ func containsAssignment(text string) bool {
 			if i+1 < len(text) && text[i+1] == '=' {
 				return true
 			}
+		default:
+			// Nothing
 		}
 	}
 
@@ -250,6 +266,7 @@ func containsAssignment(text string) bool {
 // and keeping the first non-empty description.
 func mergeRules(rules []Rule) []Rule {
 	seen := make(map[string]int)
+
 	var result []Rule
 
 	for _, r := range rules {

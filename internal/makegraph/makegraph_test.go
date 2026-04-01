@@ -104,7 +104,7 @@ func TestBuild_Description_SetsNodeDescription(t *testing.T) {
 }
 
 func collectNodeIDs(gr *graph.Graph) []string {
-	var ids []string
+	ids := make([]string, 0, gr.NodeCount())
 	for node := range gr.Nodes() {
 		ids = append(ids, node.ID())
 	}

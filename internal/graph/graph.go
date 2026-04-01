@@ -39,3 +39,8 @@ func (g *Graph) Node(id string) (*Node, bool) {
 func (g *Graph) Nodes() iter.Seq[*Node] {
 	return maps.Values(g.nodes)
 }
+
+// NodeCount returns the total number of nodes in the graph.
+func (g *Graph) NodeCount() int {
+	return len(g.nodes)
+}
