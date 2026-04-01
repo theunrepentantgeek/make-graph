@@ -159,7 +159,7 @@ func parseRuleLine(line string) []Rule {
 	}
 
 	// Handle double-colon rules
-	after = strings.TrimPrefix(after[1:], ":")
+	after = strings.TrimPrefix(after, ":")
 
 	targets := strings.Fields(before)
 	if len(targets) == 0 {
