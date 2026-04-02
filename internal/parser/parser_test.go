@@ -300,6 +300,30 @@ func TestParse_AddonResizer_DoesNotParseRecipesAsRules(t *testing.T) {
 	g.Expect(rules).NotTo(HaveKey("run"))
 }
 
+func TestParse_TargetSpecificVariable_SkippedAsPrerequisite(t *testing.T) {
+	t.Parallel()
+	g := NewGomegaWithT(t)
+
+	// Act
+	mf, err := Parse("testdata/target-specific-var.mk")
+
+	// Assert
+	g.Expect(err).ToNot(HaveOccurred())
+
+	rules := makeRuleMap(mf.Rules)
+	g.Expect(rules).To(HaveKey("build-cross"))
+	g.Expect(rules).To(HaveKey("build"))
+
+	// build-cross should depend on build, not on LDFLAGS or other variable assignment tokens
+	g.Expect(rules["build-cross"].Prerequisites).To(ConsistOf("build"))
+
+	// LDFLAGS should not appear as a target
+	g.Expect(rules).NotTo(HaveKey("LDFLAGS"))
+
+	// build-cross should have its recipe
+	g.Expect(rules["build-cross"].Recipes).To(HaveLen(1))
+}
+
 // makeRuleMap creates a map from target name to Rule for convenient test lookups.
 func makeRuleMap(rules []Rule) map[string]Rule {
 	m := make(map[string]Rule, len(rules))
