@@ -59,6 +59,7 @@ func parseReader(
 			continue
 		}
 
+		//nolint:modernize // We do more than just trim the prefix, so this is more readable as-is.
 		if strings.HasPrefix(line, "\t") {
 			recipe := strings.TrimPrefix(line, "\t")
 			for _, idx := range currentRuleIndices {
@@ -158,6 +159,11 @@ func parseRuleLine(line string) []Rule {
 
 	// Handle double-colon rules
 	after = strings.TrimPrefix(after, ":")
+
+	// Check for target-specific variable assignment (e.g., "target: VAR += value")
+	if containsAssignment(after) {
+		return nil
+	}
 
 	targets := strings.Fields(before)
 	if len(targets) == 0 {
