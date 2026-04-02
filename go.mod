@@ -3,7 +3,7 @@ module github.com/theunrepentantgeek/make-graph
 go 1.24.0
 
 require (
-	github.com/alecthomas/kong v1.14.0
+	github.com/alecthomas/kong v1.15.0
 	github.com/onsi/gomega v1.39.1
 	github.com/phsym/console-slog v0.3.1
 	github.com/rotisserie/eris v0.5.4
