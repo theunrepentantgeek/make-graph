@@ -33,8 +33,8 @@ jobs:
       - name: Build devcontainer image and push
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/theunrepentantgeek/task-graph-devcontainer
-          cacheFrom: ghcr.io/theunrepentantgeek/task-graph-devcontainer
+          imageName: ghcr.io/theunrepentantgeek/make-graph-devcontainer
+          cacheFrom: ghcr.io/theunrepentantgeek/make-graph-devcontainer
           push: always
  
   test:
@@ -57,13 +57,13 @@ jobs:
       - name: Build devcontainer image 
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/theunrepentantgeek/task-graph-devcontainer
-          cacheFrom: ghcr.io/theunrepentantgeek/task-graph-devcontainer
+          imageName: ghcr.io/theunrepentantgeek/make-graph-devcontainer
+          cacheFrom: ghcr.io/theunrepentantgeek/make-graph-devcontainer
           push: never
 
       - name: Run task ci in devcontainer
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/theunrepentantgeek/task-graph-devcontainer
+          imageName: ghcr.io/theunrepentantgeek/make-graph-devcontainer
           push: never
           runCmd: task ci

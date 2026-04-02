@@ -27,14 +27,14 @@ jobs:
       - name: Build devcontainer image
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/theunrepentantgeek/task-graph-devcontainer
-          cacheFrom: ghcr.io/theunrepentantgeek/task-graph-devcontainer
+          imageName: ghcr.io/theunrepentantgeek/make-graph-devcontainer
+          cacheFrom: ghcr.io/theunrepentantgeek/make-graph-devcontainer
           push: never
 
       - name: Run task ci in devcontainer
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/theunrepentantgeek/task-graph-devcontainer
+          imageName: ghcr.io/theunrepentantgeek/make-graph-devcontainer
           push: never
           runCmd: task ci
 
@@ -44,7 +44,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/*
           file_glob: true
-          asset_name: task-graph
+          asset_name: make-graph
           tag: ${{ github.ref }}
           overwrite: true
-          body: "Release of task-graph version ${{ github.ref }}."
+          body: "Release of make-graph version ${{ github.ref }}."
