@@ -106,6 +106,37 @@ func TestString_WithParts_JoinsWithSeparatorsAndBraces(t *testing.T) {
 	g.Expect(result).To(Equal("{alpha | beta}"))
 }
 
+func TestString_SinglePartWithBraces_EscapesBraces(t *testing.T) {
+	t.Parallel()
+	g := NewWithT(t)
+
+	// Arrange
+	r := newRecord()
+	r.add("build-${VERSION}")
+
+	// Act
+	result := r.String()
+
+	// Assert
+	g.Expect(result).To(Equal(`build-$\{VERSION\}`))
+}
+
+func TestString_MultiPartWithBraces_EscapesBracesInContent(t *testing.T) {
+	t.Parallel()
+	g := NewWithT(t)
+
+	// Arrange
+	r := newRecord()
+	r.add("build-${VERSION}")
+	r.add("Build with ${COMPILER}")
+
+	// Act
+	result := r.String()
+
+	// Assert
+	g.Expect(result).To(Equal(`{build-$\{VERSION\} | Build with $\{COMPILER\}}`))
+}
+
 func TestString_NoParts_ReturnsEmptyBraces(t *testing.T) {
 	t.Parallel()
 	g := NewWithT(t)

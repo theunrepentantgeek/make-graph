@@ -40,22 +40,26 @@ func (r *record) addWrappedf(width int, format string, args ...any) {
 	r.addWrapped(width, fmt.Sprintf(format, args...))
 }
 
-var escapings = map[string]string{
-	`{`: `\{`,
-	`}`: `\}`,
-	`"`: `\"`,
-}
-
 // String returns the string representation of the record, which is the parts joined by " | ".
 func (r *record) String() string {
 	if len(r.parts) == 1 {
-		return r.parts[0]
+		return escapeRecordContent(r.parts[0])
 	}
 
 	content := strings.Join(r.parts, " | ")
-	for s, r := range escapings {
-		content = strings.ReplaceAll(content, s, r)
-	}
+	content = escapeRecordContent(content)
 
 	return fmt.Sprintf("{%s}", content)
+}
+
+// escapeRecordContent escapes characters that have special meaning in Graphviz
+// record-shaped node labels. Braces delimit record fields, so literal braces in
+// content (e.g. from Makefile variable references like ${VAR}) must be escaped.
+// Double-quotes are NOT escaped here because the caller (quoteString) handles that
+// when writing the value into a dot attribute.
+func escapeRecordContent(s string) string {
+	s = strings.ReplaceAll(s, `{`, `\{`)
+	s = strings.ReplaceAll(s, `}`, `\}`)
+
+	return s
 }
