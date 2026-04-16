@@ -192,6 +192,88 @@ func TestWriteNodeDefinitionTo_WithNodeLabel_UsesLabel(t *testing.T) {
 	g.Expect(output).To(gomega.ContainSubstring("Custom Label"))
 }
 
+func TestWriteNodeDefinitionTo_WithDescription_PreservesRecordSyntax(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+
+	buf := bytes.Buffer{}
+	node := graph.NewNode("test-node")
+	node.Description = "Build and test everything"
+
+	cfg := config.New()
+
+	iw := indentwriter.New()
+	root := iw.Add("digraph {")
+
+	err := writeNodeDefinitionTo(root, node, cfg, safe.NewRegistry())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	root.Add("}")
+
+	_, err = iw.WriteTo(&buf, "  ")
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	output := buf.String()
+	// The label must use unescaped braces for record vertical layout
+	g.Expect(output).To(gomega.ContainSubstring(`{test-node | Build and test`))
+	// The label must NOT have escaped structural braces
+	g.Expect(output).NotTo(gomega.MatchRegexp(`label="\\{`))
+}
+
+func TestWriteNodeDefinitionTo_WithWrappedDescription_PreservesNewlines(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+
+	buf := bytes.Buffer{}
+	node := graph.NewNode("test-node")
+	node.Description = "Build and test everything in the project"
+
+	cfg := config.New()
+
+	iw := indentwriter.New()
+	root := iw.Add("digraph {")
+
+	err := writeNodeDefinitionTo(root, node, cfg, safe.NewRegistry())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	root.Add("}")
+
+	_, err = iw.WriteTo(&buf, "  ")
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	output := buf.String()
+	// The \n in the label must be preserved (not double-escaped to \\n)
+	g.Expect(output).To(gomega.ContainSubstring(`\n`))
+	g.Expect(output).NotTo(gomega.ContainSubstring(`\\n`))
+}
+
+func TestWriteNodeDefinitionTo_WithBracesInID_EscapesBracesInLabel(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+
+	buf := bytes.Buffer{}
+	node := graph.NewNode("build-${VERSION}")
+	node.Description = "Build with ${COMPILER}"
+
+	cfg := config.New()
+
+	iw := indentwriter.New()
+	root := iw.Add("digraph {")
+
+	err := writeNodeDefinitionTo(root, node, cfg, safe.NewRegistry())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	root.Add("}")
+
+	_, err = iw.WriteTo(&buf, "  ")
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	output := buf.String()
+	// Braces in content must be escaped so Graphviz doesn't treat them as record structure
+	g.Expect(output).To(gomega.ContainSubstring(`$\{VERSION\}`))
+	g.Expect(output).To(gomega.ContainSubstring(`$\{COMPILER\}`))
+}
+
 func TestWriteNodeDefinitionTo_WithLongDescription_WrapsText(t *testing.T) {
 	t.Parallel()
 	g := gomega.NewWithT(t)

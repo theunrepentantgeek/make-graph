@@ -100,12 +100,11 @@ func (p properties) WriteTo(
 }
 
 // quoteString returns the given string with all double quotes escaped,
-// so that it can be safely used as a label in Graphviz.
+// so that it can be safely used as a value in a Graphviz dot attribute.
+// Braces and backslashes are NOT escaped here because record labels
+// handle their own escaping via escapeRecordContent.
 func quoteString(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, `"`, `\"`)
-	s = strings.ReplaceAll(s, `{`, `\{`)
-	s = strings.ReplaceAll(s, `}`, `\}`)
 
 	return s
 }
